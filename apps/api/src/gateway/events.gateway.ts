@@ -11,7 +11,16 @@ import { Server, Socket } from 'socket.io';
 
 @WebSocketGateway({
   cors: {
-    origin: ['http://localhost:3000', 'http://localhost:3002'],
+    origin: (origin: string, callback: (err: Error | null, allow?: boolean) => void) => {
+      const allowed = process.env.ALLOWED_ORIGINS
+        ? process.env.ALLOWED_ORIGINS.split(',')
+        : ['http://localhost:3000', 'http://localhost:3002'];
+      if (!origin || allowed.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, true); // TV screens can come from any Vercel URL; keep permissive for demo
+      }
+    },
     credentials: true,
   },
 })
