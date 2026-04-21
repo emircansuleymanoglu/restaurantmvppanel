@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useState, useRef, Suspense } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 const POLL_INTERVAL = 5000;
+const MIN_CARD_WIDTH = 170;
+const MIN_CARD_HEIGHT = 180;
 
 interface Product {
   id: string;
@@ -34,6 +36,7 @@ function TVDisplay() {
 
   async function fetchData(silent = false) {
     if (!restaurantId) return;
+
     try {
       const [productsRes, layoutRes] = await Promise.all([
         fetch(`${API_URL}/public/${restaurantId}/products`),
@@ -41,7 +44,9 @@ function TVDisplay() {
       ]);
       const [prods, layout] = await Promise.all([productsRes.json(), layoutRes.json()]);
       const newProds: Product[] = Array.isArray(prods) ? prods : [];
-      const newLayout = layout?.layoutJson?.items || [];
+      const newLayout: LayoutItem[] = Array.isArray(layout?.layoutJson?.items)
+        ? layout.layoutJson.items
+        : [];
 
       const serialized = JSON.stringify(newProds);
       if (!silent && serialized !== prevProductsRef.current && prevProductsRef.current !== '') {
@@ -49,6 +54,7 @@ function TVDisplay() {
         setFlash(true);
         setTimeout(() => setFlash(false), 800);
       }
+
       prevProductsRef.current = serialized;
       setProducts(newProds);
       setLayoutItems(newLayout);
@@ -61,6 +67,7 @@ function TVDisplay() {
 
   useEffect(() => {
     if (!restaurantId) return;
+
     fetchData(true);
     const interval = setInterval(() => fetchData(), POLL_INTERVAL);
     return () => clearInterval(interval);
@@ -81,7 +88,12 @@ function TVDisplay() {
   }
 
   const productMap = new Map(products.map((p) => [p.id, p]));
-  const hasLayout = layoutItems.length > 0;
+  const visibleLayoutItems = layoutItems.filter((item) => productMap.has(item.productId));
+  const hasLayout = visibleLayoutItems.length > 0;
+  const canvasHeight = Math.max(
+    700,
+    ...visibleLayoutItems.map((item) => item.y + Math.max(item.h || 0, MIN_CARD_HEIGHT) + 32),
+  );
 
   return (
     <div className={`min-h-screen bg-gray-950 transition-all ${flash ? 'brightness-110' : ''}`}>
@@ -99,8 +111,18 @@ function TVDisplay() {
               Updated {lastUpdate.toLocaleTimeString()}
             </span>
           )}
-          <div className={`flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full border ${connected ? 'text-green-400 border-green-500/30 bg-green-500/10' : 'text-red-400 border-red-500/30 bg-red-500/10'}`}>
-            <span className={`w-2 h-2 rounded-full ${connected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} />
+          <div
+            className={`flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full border ${
+              connected
+                ? 'text-green-400 border-green-500/30 bg-green-500/10'
+                : 'text-red-400 border-red-500/30 bg-red-500/10'
+            }`}
+          >
+            <span
+              className={`w-2 h-2 rounded-full ${
+                connected ? 'bg-green-400 animate-pulse' : 'bg-red-400'
+              }`}
+            />
             {connected ? 'LIVE' : 'Reconnecting...'}
           </div>
         </div>
@@ -108,17 +130,21 @@ function TVDisplay() {
 
       <div className="p-8">
         {hasLayout ? (
-          <div className="relative" style={{ minHeight: 700 }}>
-            {layoutItems.map((item) => {
+          <div className="relative w-full overflow-hidden" style={{ minHeight: canvasHeight }}>
+            {visibleLayoutItems.map((item) => {
               const product = productMap.get(item.productId);
               if (!product) return null;
+
+              const width = Math.max(item.w || 0, MIN_CARD_WIDTH);
+              const height = Math.max(item.h || 0, MIN_CARD_HEIGHT);
+
               return (
                 <div
                   key={item.id}
                   className="absolute card-appear"
-                  style={{ left: item.x, top: item.y, width: item.w }}
+                  style={{ left: item.x, top: item.y, width, height }}
                 >
-                  <ProductCard product={product} />
+                  <ProductCard product={product} height={height} />
                 </div>
               );
             })}
@@ -144,17 +170,86 @@ function TVDisplay() {
   );
 }
 
-function ProductCard({ product }: { product: Product }) {
+function ProductCard({ product, height }: { product: Product; height?: number }) {
+  const imageHeight = height ? Math.max(108, height - 70) : 160;
+  const compact = Boolean(height && height <= 180);
+
   return (
-    <div style={{ background: '#111827', border: '1px solid #374151', borderRadius: '1rem', boxShadow: '0 4px 20px rgba(0,0,0,0.4)' }}>
+    <div
+      style={{
+        height: height ?? 'auto',
+        background: '#111827',
+        border: '1px solid #374151',
+        borderRadius: '1rem',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       {product.imageUrl ? (
-        <img src={product.imageUrl} alt={product.name} style={{ width: '100%', height: '160px', objectFit: 'cover', borderRadius: '1rem 1rem 0 0', display: 'block' }} />
+        <img
+          src={product.imageUrl}
+          alt={product.name}
+          style={{
+            width: '100%',
+            height: imageHeight,
+            objectFit: 'cover',
+            objectPosition: 'center',
+            flexShrink: 0,
+            display: 'block',
+          }}
+        />
       ) : (
-        <div style={{ width: '100%', height: '160px', background: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', borderRadius: '1rem 1rem 0 0' }}>🍔</div>
+        <div
+          style={{
+            width: '100%',
+            height: imageHeight,
+            background: '#374151',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '3rem',
+            flexShrink: 0,
+          }}
+        >
+          Food
+        </div>
       )}
-      <div style={{ padding: '1rem' }}>
-        <div style={{ color: '#ffffff', fontWeight: 700, fontSize: '1.125rem', lineHeight: 1.4 }}>{product.name}</div>
-        <div style={{ color: '#fb923c', fontWeight: 800, fontSize: '1.5rem', marginTop: '4px' }}>${Number(product.price).toFixed(2)}</div>
+      <div
+        style={{
+          padding: compact ? '0.625rem 0.875rem' : '0.75rem 1rem',
+          minHeight: 0,
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'flex-start',
+        }}
+      >
+        <div
+          style={{
+            color: '#ffffff',
+            fontWeight: 700,
+            fontSize: compact ? '1rem' : '1.125rem',
+            lineHeight: 1.15,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {product.name}
+        </div>
+        <div
+          style={{
+            color: '#fb923c',
+            fontWeight: 800,
+            fontSize: compact ? '1.25rem' : '1.5rem',
+            lineHeight: 1.1,
+            marginTop: compact ? '2px' : '4px',
+          }}
+        >
+          ${Number(product.price).toFixed(2)}
+        </div>
       </div>
     </div>
   );
@@ -162,7 +257,13 @@ function ProductCard({ product }: { product: Product }) {
 
 export default function Page() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-gray-950 flex items-center justify-center text-white">Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-950 flex items-center justify-center text-white">
+          Loading...
+        </div>
+      }
+    >
       <TVDisplay />
     </Suspense>
   );

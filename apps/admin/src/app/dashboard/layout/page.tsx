@@ -14,6 +14,12 @@ import { api, Product, LayoutItem } from '@/lib/api';
 import { DraggableProductCard } from '@/components/DraggableProductCard';
 import { LayoutCanvas } from '@/components/LayoutCanvas';
 
+const CANVAS_WIDTH = 900;
+const CARD_WIDTH = 180;
+const CARD_HEIGHT = 180;
+const CARD_GAP = 24;
+const CANVAS_PADDING = 20;
+
 export default function LayoutBuilderPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [layoutItems, setLayoutItems] = useState<LayoutItem[]>([]);
@@ -58,7 +64,13 @@ export default function LayoutBuilderPage() {
       if (alreadyAdded) return;
       setLayoutItems((prev) => [
         ...prev,
-        { id: product.id, productId: product.id, x: 20 + prev.length * 10, y: 20 + prev.length * 10, w: 200, h: 180 },
+        {
+          id: product.id,
+          productId: product.id,
+          ...getNextGridPosition(prev),
+          w: CARD_WIDTH,
+          h: CARD_HEIGHT,
+        },
       ]);
     }
   }
@@ -156,4 +168,34 @@ export default function LayoutBuilderPage() {
       </DndContext>
     </div>
   );
+}
+
+function getNextGridPosition(items: LayoutItem[]) {
+  const columns = Math.max(
+    1,
+    Math.floor((CANVAS_WIDTH - CANVAS_PADDING * 2 + CARD_GAP) / (CARD_WIDTH + CARD_GAP)),
+  );
+  const occupied = new Set(
+    items.map((item) => {
+      const col = Math.round((item.x - CANVAS_PADDING) / (CARD_WIDTH + CARD_GAP));
+      const row = Math.round((item.y - CANVAS_PADDING) / (CARD_HEIGHT + CARD_GAP));
+      return `${col}:${row}`;
+    }),
+  );
+
+  for (let index = 0; index <= items.length; index += 1) {
+    const col = index % columns;
+    const row = Math.floor(index / columns);
+    if (!occupied.has(`${col}:${row}`)) {
+      return {
+        x: CANVAS_PADDING + col * (CARD_WIDTH + CARD_GAP),
+        y: CANVAS_PADDING + row * (CARD_HEIGHT + CARD_GAP),
+      };
+    }
+  }
+
+  return {
+    x: CANVAS_PADDING,
+    y: CANVAS_PADDING + Math.ceil(items.length / columns) * (CARD_HEIGHT + CARD_GAP),
+  };
 }
