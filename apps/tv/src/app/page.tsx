@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { getSocket } from '@/lib/socket';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+const POLL_INTERVAL = 5000;
 
 interface Product {
   id: string;
@@ -30,9 +30,9 @@ function TVDisplay() {
   const [connected, setConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [flash, setFlash] = useState(false);
-  const socketRef = useRef<ReturnType<typeof getSocket> | null>(null);
+  const prevProductsRef = useRef<string>('');
 
-  async function fetchData() {
+  async function fetchData(silent = false) {
     if (!restaurantId) return;
     try {
       const [productsRes, layoutRes] = await Promise.all([
@@ -40,37 +40,30 @@ function TVDisplay() {
         fetch(`${API_URL}/public/${restaurantId}/layout`),
       ]);
       const [prods, layout] = await Promise.all([productsRes.json(), layoutRes.json()]);
-      setProducts(Array.isArray(prods) ? prods : []);
-      setLayoutItems(layout?.layoutJson?.items || []);
+      const newProds: Product[] = Array.isArray(prods) ? prods : [];
+      const newLayout = layout?.layoutJson?.items || [];
+
+      const serialized = JSON.stringify(newProds);
+      if (!silent && serialized !== prevProductsRef.current && prevProductsRef.current !== '') {
+        setLastUpdate(new Date());
+        setFlash(true);
+        setTimeout(() => setFlash(false), 800);
+      }
+      prevProductsRef.current = serialized;
+      setProducts(newProds);
+      setLayoutItems(newLayout);
+      setConnected(true);
     } catch (e) {
       console.error('Failed to fetch data', e);
+      setConnected(false);
     }
   }
 
   useEffect(() => {
     if (!restaurantId) return;
-    fetchData();
-
-    const socket = getSocket();
-    socketRef.current = socket;
-
-    socket.on('connect', () => setConnected(true));
-    socket.on('disconnect', () => setConnected(false));
-    if (socket.connected) setConnected(true);
-
-    socket.emit('subscribe', { restaurantId });
-
-    const event = `restaurant_${restaurantId}_update`;
-    socket.on(event, () => {
-      fetchData();
-      setLastUpdate(new Date());
-      setFlash(true);
-      setTimeout(() => setFlash(false), 800);
-    });
-
-    return () => {
-      socket.off(event);
-    };
+    fetchData(true);
+    const interval = setInterval(() => fetchData(), POLL_INTERVAL);
+    return () => clearInterval(interval);
   }, [restaurantId]);
 
   if (!restaurantId) {
