@@ -146,15 +146,15 @@ function TVDisplay() {
 
 function ProductCard({ product }: { product: Product }) {
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-2xl shadow-xl live-indicator">
+    <div style={{ background: '#111827', border: '1px solid #374151', borderRadius: '1rem', boxShadow: '0 4px 20px rgba(0,0,0,0.4)' }}>
       {product.imageUrl ? (
-        <img src={product.imageUrl} alt={product.name} className="w-full h-40 object-cover rounded-t-2xl block" />
+        <img src={product.imageUrl} alt={product.name} style={{ width: '100%', height: '160px', objectFit: 'cover', borderRadius: '1rem 1rem 0 0', display: 'block' }} />
       ) : (
-        <div className="w-full h-40 bg-gray-800 flex items-center justify-center text-5xl rounded-t-2xl">🍔</div>
+        <div style={{ width: '100%', height: '160px', background: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', borderRadius: '1rem 1rem 0 0' }}>🍔</div>
       )}
-      <div className="p-4">
-        <div className="text-white font-bold text-lg">{product.name}</div>
-        <div className="text-orange-400 font-extrabold text-2xl mt-1">${Number(product.price).toFixed(2)}</div>
+      <div style={{ padding: '1rem' }}>
+        <div style={{ color: '#ffffff', fontWeight: 700, fontSize: '1.125rem', lineHeight: 1.4 }}>{product.name}</div>
+        <div style={{ color: '#fb923c', fontWeight: 800, fontSize: '1.5rem', marginTop: '4px' }}>${Number(product.price).toFixed(2)}</div>
       </div>
     </div>
   );
