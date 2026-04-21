@@ -56,6 +56,7 @@ function TVDisplay() {
 
     socket.on('connect', () => setConnected(true));
     socket.on('disconnect', () => setConnected(false));
+    if (socket.connected) setConnected(true);
 
     socket.emit('subscribe', { restaurantId });
 
