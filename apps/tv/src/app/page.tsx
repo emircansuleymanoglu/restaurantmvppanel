@@ -40,7 +40,7 @@ function TVDisplay() {
         fetch(`${API_URL}/public/${restaurantId}/layout`),
       ]);
       const [prods, layout] = await Promise.all([productsRes.json(), layoutRes.json()]);
-      setProducts(prods);
+      setProducts(Array.isArray(prods) ? prods : []);
       setLayoutItems(layout?.layoutJson?.items || []);
     } catch (e) {
       console.error('Failed to fetch data', e);
