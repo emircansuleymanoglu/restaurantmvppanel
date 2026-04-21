@@ -146,12 +146,14 @@ function TVDisplay() {
 
 function ProductCard({ product }: { product: Product }) {
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-xl live-indicator">
-      {product.imageUrl ? (
-        <img src={product.imageUrl} alt={product.name} className="w-full h-40 object-cover" />
-      ) : (
-        <div className="w-full h-40 bg-gray-800 flex items-center justify-center text-5xl">🍔</div>
-      )}
+    <div className="bg-gray-900 border border-gray-800 rounded-2xl shadow-xl live-indicator flex flex-col">
+      <div className="overflow-hidden rounded-t-2xl flex-shrink-0">
+        {product.imageUrl ? (
+          <img src={product.imageUrl} alt={product.name} className="w-full h-40 object-cover" />
+        ) : (
+          <div className="w-full h-40 bg-gray-800 flex items-center justify-center text-5xl">🍔</div>
+        )}
+      </div>
       <div className="p-4">
         <div className="text-white font-bold text-lg leading-tight">{product.name}</div>
         <div className="text-orange-400 font-extrabold text-2xl mt-1">${Number(product.price).toFixed(2)}</div>
