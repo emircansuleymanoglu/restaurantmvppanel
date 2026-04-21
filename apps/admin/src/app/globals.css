@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand: #f97316;
+}
+
+body {
+  @apply bg-gray-950 text-gray-100 antialiased;
+}
+
+.glass {
+  @apply bg-gray-900/80 backdrop-blur-sm border border-gray-800;
+}
